@@ -333,6 +333,7 @@ label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px
     <span>⚖️</span> Pipeline Legal
   </div>
   <div class="header-actions" id="header-actions">
+    <button class="btn btn-icon" onclick="requestNotificationPermission()" title="Activar notificaciones" style="font-size:16px;">🔔</button>
     <button class="btn btn-primary btn-sm" onclick="openNewContact()">+ Contacto</button>
   </div>
 </header>
@@ -343,19 +344,19 @@ label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px
   <!-- PAGE: PIPELINE -->
   <div class="page active" id="page-pipeline">
     <div class="stats-grid">
-      <div class="stat-card">
+      <div class="stat-card" onclick="filterByStats('todos')" id="card-total" style="cursor:pointer;">
         <div class="stat-value" id="stat-total">—</div>
         <div class="stat-label">Total contactos</div>
       </div>
-      <div class="stat-card stat-warn">
+      <div class="stat-card stat-warn" onclick="filterByStats('frios')" id="card-cold" style="cursor:pointer;">
         <div class="stat-value" id="stat-cold">—</div>
         <div class="stat-label">Contactos fríos</div>
       </div>
-      <div class="stat-card stat-accent">
+      <div class="stat-card stat-accent" onclick="filterByStats('pipeline')" id="card-pipeline" style="cursor:pointer;">
         <div class="stat-value" id="stat-pipeline">—</div>
         <div class="stat-label">En pipeline</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" onclick="filterByStats('recordatorios')" id="card-reminders" style="cursor:pointer;">
         <div class="stat-value" id="stat-reminders">—</div>
         <div class="stat-label">Recordatorios</div>
       </div>
@@ -701,6 +702,9 @@ function getBadge(estado) {
   return `<span class="badge ${cls}">${estado}</span>`;
 }
 
+let activeStatFilter = null;
+let allReminders = [];
+
 function updateStats() {
   const now = Date.now();
   const cold = contacts.filter(c => {
@@ -712,19 +716,159 @@ function updateStats() {
   document.getElementById('stat-total').textContent = contacts.length;
   document.getElementById('stat-cold').textContent = cold;
   document.getElementById('stat-pipeline').textContent = pipeline;
-  document.getElementById('stat-reminders').textContent = '—';
+
+  loadAllReminders().then(count => {
+    document.getElementById('stat-reminders').textContent = count;
+    updateAppBadge(count);
+  });
+}
+
+async function loadAllReminders() {
+  const now = new Date();
+  const { data } = await db.from('reminders').select('*').eq('completado', false);
+  allReminders = (data || []).filter(r => new Date(r.fecha_hora) >= now);
+  return allReminders.length;
+}
+
+async function updateAppBadge(count) {
+  if ('setAppBadge' in navigator) {
+    if (count > 0) await navigator.setAppBadge(count);
+    else await navigator.clearAppBadge();
+  }
+}
+
+async function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      showToast('Notificaciones activadas ✓');
+      scheduleNotifications();
+    }
+  }
+}
+
+async function scheduleNotifications() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = new Date();
+  const soon = new Date(now.getTime() + 60 * 60 * 1000);
+  const { data } = await db.from('reminders').select('*, contacts(nombre)').eq('completado', false);
+  if (!data) return;
+  data.filter(r => {
+    const t = new Date(r.fecha_hora);
+    return t >= now && t <= soon;
+  }).forEach(r => {
+    const ms = new Date(r.fecha_hora) - now;
+    setTimeout(() => {
+      new Notification('Pipeline Legal', {
+        body: `${r.descripcion} — ${r.contacts?.nombre || ''}`,
+        icon: '/icon.svg'
+      });
+    }, ms);
+  });
+}
+
+function filterByStats(type) {
+  activeStatFilter = activeStatFilter === type ? null : type;
+  ['total','cold','pipeline','reminders'].forEach(k => {
+    const card = document.getElementById('card-' + (k === 'total' ? 'total' : k === 'cold' ? 'cold' : k === 'pipeline' ? 'pipeline' : 'reminders'));
+    if (card) card.style.outline = '';
+  });
+
+  const cardMap = { todos: 'card-total', frios: 'card-cold', pipeline: 'card-pipeline', recordatorios: 'card-reminders' };
+  if (activeStatFilter && cardMap[activeStatFilter]) {
+    document.getElementById(cardMap[activeStatFilter]).style.outline = '2px solid var(--accent)';
+  }
+
+  if (type === 'recordatorios') {
+    showRemindersModal();
+    activeStatFilter = null;
+    return;
+  }
+
+  filterContacts();
+}
+
+async function showRemindersModal() {
+  const now = new Date();
+  const { data } = await db.from('reminders').select('*, contacts(nombre, empresa)').eq('completado', false).order('fecha_hora');
+  if (!data || !data.length) { showToast('Sin recordatorios pendientes'); return; }
+
+  const items = data.map(r => {
+    const dt = new Date(r.fecha_hora);
+    const overdue = dt < now;
+    return `
+    <div class="reminder-item ${overdue ? 'reminder-overdue' : ''}" style="padding:14px 0;">
+      <div class="reminder-left">
+        <span style="font-size:18px;">${overdue ? '🔴' : '🔔'}</span>
+        <div>
+          <div class="reminder-text">${r.descripcion}</div>
+          <div style="font-size:12px;color:var(--text3);">${r.contacts?.nombre} · ${r.contacts?.empresa}</div>
+          <div class="reminder-date">${dt.toLocaleDateString('es-CL')} ${dt.toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('modal-detail-content').innerHTML = `
+    <div class="modal-header">
+      <h2>Recordatorios pendientes</h2>
+      <button class="btn btn-icon" onclick="closeModal('modal-detail')">✕</button>
+    </div>
+    ${items}`;
+  openModal('modal-detail');
 }
 
 // FILTER
 function filterContacts() {
   const q = document.getElementById('search-input').value.toLowerCase();
   const estado = document.getElementById('filter-estado').value;
-  const filtered = contacts.filter(c => {
+  const now = Date.now();
+
+  let filtered = contacts.filter(c => {
     const matchQ = !q || c.nombre.toLowerCase().includes(q) || c.empresa.toLowerCase().includes(q);
     const matchE = !estado || c.estado === estado;
     return matchQ && matchE;
   });
+
+  if (activeStatFilter === 'frios') {
+    filtered = filtered.filter(c => {
+      const days = c.last_interaction ? Math.floor((now - new Date(c.last_interaction)) / 86400000) : 999;
+      return days >= 14 && ['Contacto Inicial','En Conversación','Propuesta Enviada'].includes(c.estado);
+    });
+    showFilterLabel('Mostrando: Contactos fríos');
+  } else if (activeStatFilter === 'pipeline') {
+    filtered = filtered.filter(c => ['Contacto Inicial','En Conversación','Propuesta Enviada'].includes(c.estado));
+    showFilterLabel('Mostrando: En pipeline');
+  } else if (activeStatFilter === 'todos' || !activeStatFilter) {
+    showFilterLabel('');
+  }
+
   renderContacts(filtered);
+}
+
+function showFilterLabel(text) {
+  let el = document.getElementById('filter-label');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'filter-label';
+    el.style.cssText = 'font-size:12px;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;';
+    document.getElementById('contacts-list').before(el);
+  }
+  if (text) {
+    el.innerHTML = `<span>${text}</span><button onclick="clearStatFilter()" style="font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;">✕ Limpiar</button>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function clearStatFilter() {
+  activeStatFilter = null;
+  ['card-total','card-cold','card-pipeline','card-reminders'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.outline = '';
+  });
+  showFilterLabel('');
+  filterContacts();
 }
 
 // OPEN CONTACT
@@ -1176,6 +1320,7 @@ function renderEventos(list) {
 
 // START
 init();
+setTimeout(requestNotificationPermission, 2000);
 </script>
 </body>
 </html>
