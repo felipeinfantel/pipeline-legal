@@ -1,0 +1,13 @@
+{
+  "name": "Pipeline Legal",
+  "short_name": "Pipeline",
+  "description": "Seguimiento de gestiones legales",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F3EE",
+  "theme_color": "#2D5016",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

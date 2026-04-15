@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pipeline Legal">
+<title>Pipeline Legal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #F5F3EE;
+  --surface: #FFFFFF;
+  --surface2: #EEEBE4;
+  --border: rgba(0,0,0,0.08);
+  --text: #1A1814;
+  --text2: #6B6560;
+  --text3: #9E9890;
+  --accent: #2D5016;
+  --accent-light: #E8F0DF;
+  --accent2: #8B4513;
+  --accent2-light: #F5EBE0;
+  --warn: #C4620A;
+  --warn-light: #FEF0E3;
+  --danger: #B91C1C;
+  --danger-light: #FEE2E2;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  --nav-h: 64px;
+  --header-h: 56px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* TYPOGRAPHY */
+.serif { font-family: 'DM Serif Display', serif; }
+h1 { font-family: 'DM Serif Display', serif; font-size: 28px; font-weight: 400; }
+h2 { font-size: 20px; font-weight: 500; }
+h3 { font-size: 16px; font-weight: 500; }
+
+/* LAYOUT */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+.header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+}
+
+.header-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: var(--accent);
+  display: flex; align-items: center; gap: 8px;
+}
+
+.header-title span { font-size: 22px; }
+
+.header-actions { display: flex; gap: 8px; }
+
+.main {
+  margin-top: var(--header-h);
+  margin-bottom: var(--nav-h);
+  padding: 20px 16px;
+  flex: 1;
+}
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  height: var(--nav-h);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer; padding: 8px;
+  color: var(--text3); font-size: 11px; font-weight: 500;
+  transition: color 0.2s;
+  border: none; background: none;
+}
+
+.nav-item.active { color: var(--accent); }
+.nav-item svg { width: 22px; height: 22px; }
+
+/* CARDS */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.card + .card { margin-top: 12px; }
+
+/* CONTACT CARD */
+.contact-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  margin-bottom: 12px;
+}
+
+.contact-card:active { transform: scale(0.98); }
+.contact-card.cold { border-left: 3px solid var(--warn); }
+
+.contact-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.contact-name { font-size: 16px; font-weight: 600; color: var(--text); }
+.contact-company { font-size: 13px; color: var(--text2); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+
+.contact-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.contact-meta { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+
+/* BADGES */
+.badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 500;
+  padding: 3px 10px; border-radius: 20px;
+}
+
+.badge-prospecto { background: #E8F4FD; color: #1565C0; }
+.badge-conversacion { background: #E8F5E9; color: #2E7D32; }
+.badge-propuesta { background: #FFF8E1; color: #F57F17; }
+.badge-cerrado { background: var(--accent-light); color: var(--accent); }
+.badge-perdido { background: var(--danger-light); color: var(--danger); }
+.badge-inactivo { background: #F3F4F6; color: #6B7280; }
+.badge-estrategico { background: #F3E8FF; color: #7C3AED; }
+.badge-cold { background: var(--warn-light); color: var(--warn); font-size: 10px; }
+
+/* STATS */
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 14px;
+}
+.stat-value { font-size: 28px; font-weight: 600; color: var(--text); }
+.stat-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.stat-warn .stat-value { color: var(--warn); }
+.stat-accent .stat-value { color: var(--accent); }
+
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 18px; border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+  cursor: pointer; border: none; transition: all 0.15s;
+}
+
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:active { background: #1e3a0e; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:active { background: #E0DDD6; }
+.btn-danger { background: var(--danger-light); color: var(--danger); }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+.btn-full { width: 100%; }
+.btn-icon { width: 40px; height: 40px; padding: 0; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); }
+
+/* INPUTS */
+input, select, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+textarea { min-height: 100px; resize: vertical; }
+label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px; }
+.form-group { margin-bottom: 14px; }
+
+/* SEARCH */
+.search-bar {
+  position: relative; margin-bottom: 16px;
+}
+.search-bar input { padding-left: 40px; background: var(--surface); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); }
+
+/* SECTION HEADER */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.section-title { font-size: 18px; font-weight: 600; }
+
+/* TABS */
+.tabs { display: flex; background: var(--surface2); border-radius: var(--radius-sm); padding: 3px; margin-bottom: 16px; }
+.tab { flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; border-radius: 8px; transition: all 0.2s; border: none; background: none; }
+.tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  width: 100%; max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; background: var(--surface2); border-radius: 2px; margin: 0 auto 20px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+/* INTERACTION ITEM */
+.interaction-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.interaction-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+.interaction-content { flex: 1; }
+.interaction-type { font-size: 14px; font-weight: 500; }
+.interaction-date { font-size: 12px; color: var(--text3); }
+.interaction-note { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+/* REMINDER ITEM */
+.reminder-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.reminder-left { display: flex; gap: 10px; align-items: center; }
+.reminder-text { font-size: 14px; font-weight: 500; }
+.reminder-date { font-size: 12px; color: var(--text3); }
+.reminder-overdue .reminder-text { color: var(--danger); }
+.reminder-overdue .reminder-date { color: var(--danger); }
+
+/* AGENDA */
+.agenda-item { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.agenda-date-block { min-width: 44px; text-align: center; }
+.agenda-day { font-size: 22px; font-weight: 600; line-height: 1; }
+.agenda-month { font-size: 11px; color: var(--text3); text-transform: uppercase; }
+.agenda-content { flex: 1; }
+.agenda-name { font-size: 14px; font-weight: 500; }
+.agenda-contact { font-size: 13px; color: var(--text2); }
+
+/* PROSPECT RESULT */
+.prospect-result {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.prospect-name { font-size: 16px; font-weight: 600; }
+.prospect-industry { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
+.prospect-reason { font-size: 13px; color: var(--text2); padding: 10px; background: var(--bg); border-radius: 8px; margin-bottom: 12px; }
+.exec-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+.exec-name { font-size: 14px; font-weight: 500; }
+.exec-role { font-size: 12px; color: var(--text3); }
+
+/* LOADING */
+.loading { text-align: center; padding: 40px 20px; color: var(--text2); }
+.spinner { width: 32px; height: 32px; border: 3px solid var(--surface2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* EMPTY STATE */
+.empty { text-align: center; padding: 60px 20px; color: var(--text2); }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.empty-sub { font-size: 14px; }
+
+/* FUENTE TOGGLE */
+.fuente-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.fuente-btn { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+.fuente-btn.active { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--text); color: white; padding: 10px 20px; border-radius: 20px;
+  font-size: 14px; z-index: 300; opacity: 0; transition: all 0.3s; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* DETAIL SECTIONS */
+.detail-section { margin-bottom: 24px; }
+.detail-section-title { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+/* PILL ROW */
+.pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+
+/* DIVIDER */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+@media (min-width: 768px) {
+  .main { max-width: 480px; margin-left: auto; margin-right: auto; }
+  .bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); }
+  .header { max-width: 480px; left: 50%; transform: translateX(-50%); }
+  .modal { max-width: 480px; margin: 0 auto; }
+}
+</style>
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon.svg"></head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-title">
+    <span>⚖️</span> Pipeline Legal
+  </div>
+  <div class="header-actions" id="header-actions">
+    <button class="btn btn-primary btn-sm" onclick="openNewContact()">+ Contacto</button>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- PAGE: PIPELINE -->
+  <div class="page active" id="page-pipeline">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">Total contactos</div>
+      </div>
+      <div class="stat-card stat-warn">
+        <div class="stat-value" id="stat-cold">—</div>
+        <div class="stat-label">Contactos fríos</div>
+      </div>
+      <div class="stat-card stat-accent">
+        <div class="stat-value" id="stat-pipeline">—</div>
+        <div class="stat-label">En pipeline</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-reminders">—</div>
+        <div class="stat-label">Recordatorios</div>
+      </div>
+    </div>
+
+    <div class="search-bar">
+      <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Buscar por nombre o empresa..." id="search-input" oninput="filterContacts()">
+    </div>
+
+    <div class="section-header">
+      <div>
+        <select id="filter-estado" onchange="filterContacts()" style="width:auto;padding:6px 10px;font-size:13px;">
+          <option value="">Todos los estados</option>
+          <option value="Contacto Inicial">Contacto Inicial</option>
+          <option value="En Conversación">En Conversación</option>
+          <option value="Propuesta Enviada">Propuesta Enviada</option>
+          <option value="Cerrado">Cerrado</option>
+          <option value="Perdido">Perdido</option>
+          <option value="Cliente Inactivo">Cliente Inactivo</option>
+          <option value="Contacto Estratégico">Contacto Estratégico</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="contacts-list">
+      <div class="loading"><div class="spinner"></div>Cargando contactos...</div>
+    </div>
+  </div>
+
+  <!-- PAGE: PROSPECCIÓN -->
+  <div class="page" id="page-prospeccion">
+    <div class="section-header">
+      <div class="section-title serif">Prospección</div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="form-group">
+        <label>Industria objetivo</label>
+        <input type="text" id="p-industria" placeholder="Ej: Energía solar, Minería, Inmobiliaria...">
+      </div>
+      <div class="form-group">
+        <label>Tipo de caso legal</label>
+        <input type="text" id="p-caso" placeholder="Ej: Reclamación RCA, Infracción ambiental...">
+      </div>
+      <div class="form-group">
+        <label>Región</label>
+        <select id="p-region">
+          <option value="">Todas las regiones</option>
+          <option>Región Metropolitana</option>
+          <option>Antofagasta</option>
+          <option>Atacama</option>
+          <option>Coquimbo</option>
+          <option>Valparaíso</option>
+          <option>O'Higgins</option>
+          <option>Maule</option>
+          <option>Biobío</option>
+          <option>Araucanía</option>
+          <option>Los Lagos</option>
+          <option>Aysén</option>
+          <option>Magallanes</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Contexto adicional (opcional)</label>
+        <textarea id="p-contexto" placeholder="Describe el caso de tu cliente actual para encontrar empresas en situación similar..." style="min-height:70px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Fuentes</label>
+        <div class="fuente-group">
+          <button class="fuente-btn active" data-f="SEIA" onclick="toggleFuente(this)">SEIA</button>
+          <button class="fuente-btn active" data-f="SNIFA" onclick="toggleFuente(this)">SNIFA</button>
+          <button class="fuente-btn active" data-f="LinkedIn" onclick="toggleFuente(this)">LinkedIn</button>
+          <button class="fuente-btn active" data-f="Medios" onclick="toggleFuente(this)">Medios</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="buscarProspectos()" id="btn-buscar">
+        Buscar prospectos
+      </button>
+    </div>
+
+    <div id="prospeccion-results"></div>
+  </div>
+
+  <!-- PAGE: EVENTOS -->
+  <div class="page" id="page-eventos">
+    <div class="section-header">
+      <div class="section-title serif">Eventos</div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="form-group">
+        <label>Industrias de interés</label>
+        <input type="text" id="e-industrias" placeholder="Ej: Energía, Minería, Ambiental..." value="Derecho ambiental, Energía, Minería">
+      </div>
+      <div class="form-group">
+        <label>Período</label>
+        <select id="e-periodo">
+          <option value="1 mes">Próximo mes</option>
+          <option value="3 meses" selected>Próximos 3 meses</option>
+          <option value="6 meses">Próximos 6 meses</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="buscarEventos()" id="btn-eventos">
+        Buscar eventos
+      </button>
+    </div>
+
+    <div id="eventos-results"></div>
+  </div>
+
+</main>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="showPage('pipeline', this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    Pipeline
+  </button>
+  <button class="nav-item" onclick="showPage('prospeccion', this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    Prospección
+  </button>
+  <button class="nav-item" onclick="showPage('eventos', this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    Eventos
+  </button>
+</nav>
+
+<!-- MODAL: CONTACT DETAIL -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="modal-detail-content"></div>
+  </div>
+</div>
+
+<!-- MODAL: NEW/EDIT CONTACT -->
+<div class="modal-overlay" id="modal-form">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2 id="form-title">Nuevo contacto</h2>
+      <button class="btn btn-icon" onclick="closeModal('modal-form')">✕</button>
+    </div>
+    <div id="contact-form-content">
+      <input type="hidden" id="form-id">
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input type="text" id="form-nombre" placeholder="Nombre completo">
+      </div>
+      <div class="form-group">
+        <label>Empresa *</label>
+        <input type="text" id="form-empresa" placeholder="Nombre de la empresa">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="form-email" placeholder="correo@empresa.cl">
+      </div>
+      <div class="form-group">
+        <label>Estado</label>
+        <select id="form-estado">
+          <option value="Contacto Inicial">Contacto Inicial</option>
+          <option value="En Conversación">En Conversación</option>
+          <option value="Propuesta Enviada">Propuesta Enviada</option>
+          <option value="Cerrado">Cerrado</option>
+          <option value="Perdido">Perdido</option>
+          <option value="Cliente Inactivo">Cliente Inactivo</option>
+          <option value="Contacto Estratégico">Contacto Estratégico</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Prioridad</label>
+        <select id="form-prioridad">
+          <option value="Alta">Alta</option>
+          <option value="Media" selected>Media</option>
+          <option value="Baja">Baja</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notas</label>
+        <textarea id="form-notas" placeholder="Contexto, necesidades, próximos pasos..."></textarea>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="saveContact()" style="margin-top:8px;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://dufryglkcnbvcfbefscz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_PjNrpwbojk731O4NYTgz-A_VfBvmNxn';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let contacts = [];
+let currentContactId = null;
+
+// INIT
+async function init() {
+  await ensureTables();
+  await loadContacts();
+}
+
+async function ensureTables() {
+  // Check if contacts table exists by trying to query it
+  const { error } = await db.from('contacts').select('id').limit(1);
+  if (error && error.code === '42P01') {
+    // Table doesn't exist - we'll use localStorage as fallback
+    console.log('Using localStorage fallback');
+  }
+}
+
+// NAVIGATION
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+
+  const actions = document.getElementById('header-actions');
+  if (name === 'pipeline') {
+    actions.innerHTML = '<button class="btn btn-primary btn-sm" onclick="openNewContact()">+ Contacto</button>';
+  } else {
+    actions.innerHTML = '';
+  }
+}
+
+// TOAST
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// MODALS
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeModal(overlay.id);
+  });
+});
+
+// LOAD CONTACTS
+async function loadContacts() {
+  const { data, error } = await db.from('contacts').select('*').order('created_at', { ascending: false });
+
+  if (error || !data) {
+    // Use seed data as fallback
+    contacts = getSeedData();
+  } else if (data.length === 0) {
+    // Seed the database
+    contacts = getSeedData();
+    await seedDatabase();
+  } else {
+    contacts = data;
+  }
+  renderContacts(contacts);
+  updateStats();
+}
+
+function getSeedData() {
+  return [
+    { id: '1', nombre: 'Miguel Monsalva', empresa: 'Copeval', email: '', estado: 'Cerrado', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 2*86400000).toISOString() },
+    { id: '2', nombre: 'David Acuña', empresa: 'Almar Waters', email: '', estado: 'Contacto Inicial', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 1*86400000).toISOString() },
+    { id: '3', nombre: 'Benjamín Carrillo', empresa: 'Prohabit', email: '', estado: 'Contacto Inicial', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 1*86400000).toISOString() },
+    { id: '4', nombre: 'Stefanie Hochstetter', empresa: 'Zelestra', email: '', estado: 'Cliente Inactivo', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 15*86400000).toISOString() },
+    { id: '5', nombre: 'José Luis Hoyl', empresa: 'Besalco', email: 'jose.hoyl@besalco.cl', estado: 'Contacto Inicial', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 7*86400000).toISOString() },
+    { id: '6', nombre: 'José Miguel Negro Prado', empresa: 'Ariztía', email: '', estado: 'Contacto Inicial', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 28*86400000).toISOString() },
+    { id: '7', nombre: 'Jaime Coutts', empresa: 'Fruituist', email: 'jaime.coutts@fruitist.com', estado: 'Contacto Inicial', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 7*86400000).toISOString() },
+    { id: '8', nombre: 'Pablo Acevedo', empresa: 'Flores Acevedo Abogados', email: 'pacevedo@fa.cl', estado: 'Contacto Estratégico', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 7*86400000).toISOString() },
+    { id: '9', nombre: 'Fernando Saenz', empresa: 'Madesal', email: 'fsaenzp@madesal.cl', estado: 'Contacto Inicial', prioridad: 'Media', notas: '', last_interaction: new Date(Date.now() - 20*86400000).toISOString() },
+  ];
+}
+
+async function seedDatabase() {
+  for (const c of contacts) {
+    const { id, ...data } = c;
+    await db.from('contacts').insert(data);
+  }
+}
+
+// RENDER CONTACTS
+function renderContacts(list) {
+  const el = document.getElementById('contacts-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Sin contactos</div><div class="empty-sub">Agrega tu primer contacto</div></div>';
+    return;
+  }
+
+  const now = Date.now();
+  el.innerHTML = list.map(c => {
+    const daysSince = c.last_interaction ? Math.floor((now - new Date(c.last_interaction)) / 86400000) : 999;
+    const isCold = daysSince >= 14 && ['Contacto Inicial','En Conversación','Propuesta Enviada'].includes(c.estado);
+    const daysText = daysSince === 0 ? 'Hoy' : daysSince === 1 ? 'Ayer' : `Hace ${daysSince} días`;
+
+    return `
+    <div class="contact-card ${isCold ? 'cold' : ''}" onclick="openContact('${c.id}')">
+      <div class="contact-header">
+        <div>
+          <div class="contact-name">${c.nombre}</div>
+          <div class="contact-company">🏢 ${c.empresa}</div>
+        </div>
+        ${isCold ? '<span class="badge badge-cold">⚠ Frío</span>' : ''}
+      </div>
+      <div class="contact-footer">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          ${getBadge(c.estado)}
+          <span style="font-size:11px;color:var(--text3);padding:3px 8px;background:var(--surface2);border-radius:20px;">${c.prioridad}</span>
+        </div>
+        <div class="contact-meta">📅 ${daysText}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getBadge(estado) {
+  const map = {
+    'Contacto Inicial': 'badge-prospecto',
+    'En Conversación': 'badge-conversacion',
+    'Propuesta Enviada': 'badge-propuesta',
+    'Cerrado': 'badge-cerrado',
+    'Perdido': 'badge-perdido',
+    'Cliente Inactivo': 'badge-inactivo',
+    'Contacto Estratégico': 'badge-estrategico',
+    'Prospecto': 'badge-prospecto',
+    'Cliente Activo': 'badge-cerrado',
+  };
+  const cls = map[estado] || 'badge-prospecto';
+  return `<span class="badge ${cls}">${estado}</span>`;
+}
+
+function updateStats() {
+  const now = Date.now();
+  const cold = contacts.filter(c => {
+    const days = c.last_interaction ? Math.floor((now - new Date(c.last_interaction)) / 86400000) : 999;
+    return days >= 14 && ['Contacto Inicial','En Conversación','Propuesta Enviada'].includes(c.estado);
+  }).length;
+  const pipeline = contacts.filter(c => ['Contacto Inicial','En Conversación','Propuesta Enviada'].includes(c.estado)).length;
+
+  document.getElementById('stat-total').textContent = contacts.length;
+  document.getElementById('stat-cold').textContent = cold;
+  document.getElementById('stat-pipeline').textContent = pipeline;
+  document.getElementById('stat-reminders').textContent = '—';
+}
+
+// FILTER
+function filterContacts() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const estado = document.getElementById('filter-estado').value;
+  const filtered = contacts.filter(c => {
+    const matchQ = !q || c.nombre.toLowerCase().includes(q) || c.empresa.toLowerCase().includes(q);
+    const matchE = !estado || c.estado === estado;
+    return matchQ && matchE;
+  });
+  renderContacts(filtered);
+}
+
+// OPEN CONTACT
+async function openContact(id) {
+  currentContactId = id;
+  const c = contacts.find(x => x.id === id);
+  if (!c) return;
+
+  const now = Date.now();
+  const daysSince = c.last_interaction ? Math.floor((now - new Date(c.last_interaction)) / 86400000) : 0;
+
+  document.getElementById('modal-detail-content').innerHTML = `
+    <div class="modal-header">
+      <div>
+        <h2>${c.nombre}</h2>
+        <div style="font-size:14px;color:var(--text2);margin-top:2px;">🏢 ${c.empresa}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="openEditContact('${c.id}')">Editar</button>
+        <button class="btn btn-icon" onclick="closeModal('modal-detail')">✕</button>
+      </div>
+    </div>
+
+    <div class="pill-row">
+      ${getBadge(c.estado)}
+      <span style="font-size:11px;padding:4px 10px;background:var(--surface2);border-radius:20px;color:var(--text2);">${c.prioridad}</span>
+    </div>
+
+    ${c.email ? `<div style="font-size:13px;color:var(--text2);margin-bottom:16px;">✉ ${c.email}</div>` : ''}
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('interacciones', this)">Interacciones</button>
+      <button class="tab" onclick="switchTab('recordatorios', this)">Recordatorios</button>
+      <button class="tab" onclick="switchTab('notas', this)">Notas</button>
+    </div>
+
+    <div id="tab-interacciones">
+      <div class="detail-section">
+        <div class="detail-section-title">Nueva interacción</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <select id="int-tipo">
+            <option>WhatsApp</option>
+            <option>Email</option>
+            <option>Reunión</option>
+            <option>Café</option>
+            <option>Llamada</option>
+            <option>LinkedIn</option>
+          </select>
+          <input type="date" id="int-fecha" value="${new Date().toISOString().split('T')[0]}">
+        </div>
+        <input type="text" id="int-nota" placeholder="Notas (opcional)..." style="margin-bottom:8px;">
+        <button class="btn btn-secondary btn-sm btn-full" onclick="addInteraction('${c.id}')">+ Registrar</button>
+      </div>
+      <div id="interactions-list-${c.id}">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <div id="tab-recordatorios" style="display:none;">
+      <div class="detail-section">
+        <div class="detail-section-title">Nuevo recordatorio</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <input type="date" id="rem-fecha">
+          <input type="time" id="rem-hora" value="09:00">
+        </div>
+        <input type="text" id="rem-desc" placeholder="Ej: Enviar propuesta..." style="margin-bottom:8px;">
+        <button class="btn btn-secondary btn-sm btn-full" onclick="addReminder('${c.id}')">+ Agregar</button>
+      </div>
+      <div id="reminders-list-${c.id}">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <div id="tab-notas" style="display:none;">
+      <div class="detail-section">
+        <textarea id="notas-text" placeholder="Contexto, necesidades del cliente, objeciones, próximos pasos..." style="min-height:150px;">${c.notas || ''}</textarea>
+        <button class="btn btn-secondary btn-sm btn-full" onclick="saveNotas('${c.id}')" style="margin-top:8px;">Guardar notas</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <button class="btn btn-danger btn-sm btn-full" onclick="deleteContact('${c.id}')">Eliminar contacto</button>
+  `;
+
+  openModal('modal-detail');
+  loadInteractions(c.id);
+  loadReminders(c.id);
+}
+
+function switchTab(tab, btn) {
+  ['interacciones','recordatorios','notas'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#modal-detail .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// INTERACTIONS
+async function loadInteractions(contactId) {
+  const el = document.getElementById(`interactions-list-${contactId}`);
+  const { data } = await db.from('interactions').select('*').eq('contact_id', contactId).order('fecha', { ascending: false });
+
+  if (!data || !data.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0;">Sin interacciones registradas</div>';
+    return;
+  }
+
+  const icons = { WhatsApp:'💬', Email:'✉️', Reunión:'🤝', Café:'☕', Llamada:'📞', LinkedIn:'💼' };
+  el.innerHTML = data.map(i => `
+    <div class="interaction-item">
+      <div class="interaction-icon">${icons[i.tipo] || '💬'}</div>
+      <div class="interaction-content">
+        <div class="interaction-type">${i.tipo}</div>
+        <div class="interaction-date">${new Date(i.fecha).toLocaleDateString('es-CL')}</div>
+        ${i.nota ? `<div class="interaction-note">${i.nota}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addInteraction(contactId) {
+  const tipo = document.getElementById('int-tipo').value;
+  const fecha = document.getElementById('int-fecha').value;
+  const nota = document.getElementById('int-nota').value;
+
+  if (!fecha) { showToast('Selecciona una fecha'); return; }
+
+  const { error } = await db.from('interactions').insert({ contact_id: contactId, tipo, fecha, nota });
+  if (error) { showToast('Error al guardar'); return; }
+
+  await db.from('contacts').update({ last_interaction: new Date(fecha).toISOString() }).eq('id', contactId);
+  const c = contacts.find(x => x.id === contactId);
+  if (c) c.last_interaction = new Date(fecha).toISOString();
+
+  document.getElementById('int-nota').value = '';
+  loadInteractions(contactId);
+  updateStats();
+  showToast('Interacción registrada ✓');
+}
+
+// REMINDERS
+async function loadReminders(contactId) {
+  const el = document.getElementById(`reminders-list-${contactId}`);
+  const { data } = await db.from('reminders').select('*').eq('contact_id', contactId).order('fecha_hora', { ascending: true });
+
+  if (!data || !data.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0;">Sin recordatorios</div>';
+    return;
+  }
+
+  const now = new Date();
+  el.innerHTML = data.map(r => {
+    const dt = new Date(r.fecha_hora);
+    const overdue = dt < now;
+    return `
+    <div class="reminder-item ${overdue ? 'reminder-overdue' : ''}">
+      <div class="reminder-left">
+        <span style="font-size:18px;">${overdue ? '🔴' : '🔔'}</span>
+        <div>
+          <div class="reminder-text">${r.descripcion}</div>
+          <div class="reminder-date">${dt.toLocaleDateString('es-CL')} ${dt.toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>
+      <button class="btn btn-icon" style="width:28px;height:28px;font-size:12px;" onclick="deleteReminder('${r.id}','${contactId}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function addReminder(contactId) {
+  const fecha = document.getElementById('rem-fecha').value;
+  const hora = document.getElementById('rem-hora').value;
+  const desc = document.getElementById('rem-desc').value;
+
+  if (!fecha || !desc) { showToast('Completa fecha y descripción'); return; }
+
+  const fecha_hora = `${fecha}T${hora}:00`;
+  const { error } = await db.from('reminders').insert({ contact_id: contactId, descripcion: desc, fecha_hora });
+  if (error) { showToast('Error al guardar'); return; }
+
+  document.getElementById('rem-fecha').value = '';
+  document.getElementById('rem-desc').value = '';
+  loadReminders(contactId);
+  showToast('Recordatorio agregado ✓');
+}
+
+async function deleteReminder(remId, contactId) {
+  await db.from('reminders').delete().eq('id', remId);
+  loadReminders(contactId);
+  showToast('Recordatorio eliminado');
+}
+
+// NOTAS
+async function saveNotas(contactId) {
+  const notas = document.getElementById('notas-text').value;
+  await db.from('contacts').update({ notas }).eq('id', contactId);
+  const c = contacts.find(x => x.id === contactId);
+  if (c) c.notas = notas;
+  showToast('Notas guardadas ✓');
+}
+
+// NEW/EDIT CONTACT
+function openNewContact() {
+  document.getElementById('form-id').value = '';
+  document.getElementById('form-title').textContent = 'Nuevo contacto';
+  document.getElementById('form-nombre').value = '';
+  document.getElementById('form-empresa').value = '';
+  document.getElementById('form-email').value = '';
+  document.getElementById('form-estado').value = 'Contacto Inicial';
+  document.getElementById('form-prioridad').value = 'Media';
+  document.getElementById('form-notas').value = '';
+  openModal('modal-form');
+}
+
+function openEditContact(id) {
+  const c = contacts.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('form-id').value = c.id;
+  document.getElementById('form-title').textContent = 'Editar contacto';
+  document.getElementById('form-nombre').value = c.nombre;
+  document.getElementById('form-empresa').value = c.empresa;
+  document.getElementById('form-email').value = c.email || '';
+  document.getElementById('form-estado').value = c.estado;
+  document.getElementById('form-prioridad').value = c.prioridad;
+  document.getElementById('form-notas').value = c.notas || '';
+  closeModal('modal-detail');
+  openModal('modal-form');
+}
+
+async function saveContact() {
+  const id = document.getElementById('form-id').value;
+  const nombre = document.getElementById('form-nombre').value.trim();
+  const empresa = document.getElementById('form-empresa').value.trim();
+
+  if (!nombre || !empresa) { showToast('Nombre y empresa son requeridos'); return; }
+
+  const data = {
+    nombre,
+    empresa,
+    email: document.getElementById('form-email').value.trim(),
+    estado: document.getElementById('form-estado').value,
+    prioridad: document.getElementById('form-prioridad').value,
+    notas: document.getElementById('form-notas').value,
+    last_interaction: new Date().toISOString(),
+  };
+
+  if (id) {
+    await db.from('contacts').update(data).eq('id', id);
+    const idx = contacts.findIndex(x => x.id === id);
+    if (idx !== -1) contacts[idx] = { ...contacts[idx], ...data };
+  } else {
+    const { data: inserted } = await db.from('contacts').insert(data).select().single();
+    if (inserted) contacts.unshift(inserted);
+    else contacts.unshift({ id: Date.now().toString(), ...data });
+  }
+
+  closeModal('modal-form');
+  renderContacts(contacts);
+  updateStats();
+  showToast(id ? 'Contacto actualizado ✓' : 'Contacto creado ✓');
+}
+
+async function deleteContact(id) {
+  if (!confirm('¿Eliminar este contacto?')) return;
+  await db.from('contacts').delete().eq('id', id);
+  contacts = contacts.filter(x => x.id !== id);
+  closeModal('modal-detail');
+  renderContacts(contacts);
+  updateStats();
+  showToast('Contacto eliminado');
+}
+
+// PROSPECCIÓN
+function toggleFuente(btn) { btn.classList.toggle('active'); }
+
+async function buscarProspectos() {
+  const industria = document.getElementById('p-industria').value.trim();
+  const caso = document.getElementById('p-caso').value.trim();
+  if (!industria || !caso) { showToast('Ingresa industria y tipo de caso'); return; }
+
+  const region = document.getElementById('p-region').value;
+  const contexto = document.getElementById('p-contexto').value.trim();
+  const fuentes = [...document.querySelectorAll('.fuente-btn.active')].map(b => b.dataset.f);
+  const btn = document.getElementById('btn-buscar');
+
+  document.getElementById('prospeccion-results').innerHTML = '<div class="loading"><div class="spinner"></div>Buscando prospectos en ' + fuentes.join(', ') + '...</div>';
+  btn.disabled = true;
+
+  const prompt = `Eres un asistente de prospección legal para un abogado chileno especialista en derecho ambiental.
+
+El abogado tiene experiencia en: Industria ${industria}, Caso: ${caso}${region ? ', Región: ' + region : ''}${contexto ? '. Contexto: ' + contexto : ''}.
+Fuentes a consultar: ${fuentes.join(', ')}.
+
+Identifica entre 4 y 6 empresas chilenas medianas con exposición legal ambiental similar. Prioriza empresas que probablemente no tengan abogado ambiental de planta.
+
+Para cada empresa entrega información real y verificable.
+
+Responde ÚNICAMENTE con JSON válido sin texto adicional:
+{"prospectos":[{"empresa":"nombre real","industria":"rubro","razon":"por qué necesita asesoría ambiental","ejecutivos":[{"nombre":"nombre completo","cargo":"cargo"}],"fuente":"SEIA o SNIFA o LinkedIn o Medios o Web"}]}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Sin resultados');
+    const parsed = JSON.parse(match[0]);
+    renderProspectos(parsed.prospectos, industria, caso);
+  } catch(e) {
+    document.getElementById('prospeccion-results').innerHTML = `<div style="color:var(--danger);font-size:14px;padding:16px;background:var(--danger-light);border-radius:var(--radius-sm);">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderProspectos(list, industria, caso) {
+  if (!list || !list.length) {
+    document.getElementById('prospeccion-results').innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin resultados</div><div class="empty-sub">Intenta con términos más amplios</div></div>';
+    return;
+  }
+
+  const html = list.map(p => {
+    const execs = (p.ejecutivos || []).map(e => `
+      <div class="exec-row">
+        <div>
+          <div class="exec-name">${e.nombre}</div>
+          <div class="exec-role">${e.cargo}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="addProspectoToPipeline('${p.empresa.replace(/'/g,"\\'")}','${e.nombre.replace(/'/g,"\\'")}','${e.cargo.replace(/'/g,"\\'")}')">+ Pipeline</button>
+      </div>
+    `).join('');
+
+    return `
+    <div class="prospect-result">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+        <div class="prospect-name">${p.empresa}</div>
+        <span style="font-size:11px;padding:3px 8px;background:var(--accent-light);color:var(--accent);border-radius:20px;">${p.fuente}</span>
+      </div>
+      <div class="prospect-industry">${p.industria}</div>
+      <div class="prospect-reason">${p.razon}</div>
+      ${execs || '<div style="font-size:13px;color:var(--text3);">No se identificaron ejecutivos</div>'}
+    </div>`;
+  }).join('');
+
+  document.getElementById('prospeccion-results').innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">${list.length} prospectos encontrados</div>
+    ${html}`;
+}
+
+function addProspectoToPipeline(empresa, nombre, cargo) {
+  document.getElementById('form-id').value = '';
+  document.getElementById('form-title').textContent = 'Agregar prospecto';
+  document.getElementById('form-nombre').value = nombre;
+  document.getElementById('form-empresa').value = empresa;
+  document.getElementById('form-email').value = '';
+  document.getElementById('form-estado').value = 'Contacto Inicial';
+  document.getElementById('form-prioridad').value = 'Media';
+  document.getElementById('form-notas').value = `Cargo: ${cargo}\nIdentificado via módulo de prospección.`;
+  openModal('modal-form');
+}
+
+// EVENTOS
+async function buscarEventos() {
+  const industrias = document.getElementById('e-industrias').value.trim();
+  const periodo = document.getElementById('e-periodo').value;
+  const btn = document.getElementById('btn-eventos');
+
+  document.getElementById('eventos-results').innerHTML = '<div class="loading"><div class="spinner"></div>Buscando eventos en Chile...</div>';
+  btn.disabled = true;
+
+  const hoy = new Date().toLocaleDateString('es-CL');
+
+  const prompt = `Eres un asistente para un abogado ambiental chileno que busca eventos de networking.
+
+Hoy es ${hoy}. Busca eventos reales en Chile en los próximos ${periodo} relacionados con: ${industrias}.
+
+Incluye: conferencias, seminarios, desayunos de negocios, ferias. Organizadores como Sonami, CChC, Generadoras de Chile, SMA, universidades, etc.
+
+Responde ÚNICAMENTE con JSON válido:
+{"eventos":[{"nombre":"nombre del evento","fecha":"fecha aproximada","lugar":"ciudad","organizador":"organizador","tipo":"Conferencia/Seminario/Feria/Desayuno","relevancia":"por qué es útil para networking ambiental","empresas_participantes":["empresa1","empresa2"]}]}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Sin resultados');
+    const parsed = JSON.parse(match[0]);
+    renderEventos(parsed.eventos);
+  } catch(e) {
+    document.getElementById('eventos-results').innerHTML = `<div style="color:var(--danger);font-size:14px;padding:16px;background:var(--danger-light);border-radius:var(--radius-sm);">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderEventos(list) {
+  if (!list || !list.length) {
+    document.getElementById('eventos-results').innerHTML = '<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">Sin eventos</div><div class="empty-sub">Intenta con otras industrias</div></div>';
+    return;
+  }
+
+  const tipoIcon = { 'Conferencia':'🎤', 'Seminario':'📚', 'Feria':'🏛', 'Desayuno':'☕', 'Almuerzo':'🍽' };
+
+  const html = list.map(e => `
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div>
+          <div style="font-size:16px;font-weight:600;">${tipoIcon[e.tipo] || '📅'} ${e.nombre}</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:2px;">${e.organizador}</div>
+        </div>
+        <span style="font-size:11px;padding:3px 8px;background:var(--accent-light);color:var(--accent);border-radius:20px;white-space:nowrap;">${e.tipo}</span>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:10px;">
+        <div style="font-size:13px;color:var(--text2);">📅 ${e.fecha}</div>
+        <div style="font-size:13px;color:var(--text2);">📍 ${e.lugar}</div>
+      </div>
+      <div style="font-size:13px;color:var(--text2);padding:10px;background:var(--bg);border-radius:8px;margin-bottom:10px;">${e.relevancia}</div>
+      ${e.empresas_participantes && e.empresas_participantes.length ? `
+        <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">Empresas participantes</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${e.empresas_participantes.map(emp => `<span style="font-size:12px;padding:3px 10px;background:var(--surface2);border-radius:20px;color:var(--text2);">${emp}</span>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+
+  document.getElementById('eventos-results').innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">${list.length} eventos encontrados</div>
+    ${html}`;
+}
+
+// START
+init();
+</script>
+</body>
+</html>
