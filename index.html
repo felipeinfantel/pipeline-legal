@@ -344,22 +344,22 @@ label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px
   <!-- PAGE: PIPELINE -->
   <div class="page active" id="page-pipeline">
     <div class="stats-grid">
-      <div class="stat-card" onclick="filterByStats('todos')" id="card-total" style="cursor:pointer;">
+      <button class="stat-card" ontouchend="filterByStats('todos')" onclick="filterByStats('todos')" id="card-total" style="cursor:pointer;text-align:left;width:100%;border:1px solid var(--border);background:var(--surface);">
         <div class="stat-value" id="stat-total">—</div>
         <div class="stat-label">Total contactos</div>
-      </div>
-      <div class="stat-card stat-warn" onclick="filterByStats('frios')" id="card-cold" style="cursor:pointer;">
+      </button>
+      <button class="stat-card stat-warn" ontouchend="filterByStats('frios')" onclick="filterByStats('frios')" id="card-cold" style="cursor:pointer;text-align:left;width:100%;border:1px solid var(--border);background:var(--surface);">
         <div class="stat-value" id="stat-cold">—</div>
         <div class="stat-label">Contactos fríos</div>
-      </div>
-      <div class="stat-card stat-accent" onclick="filterByStats('pipeline')" id="card-pipeline" style="cursor:pointer;">
+      </button>
+      <button class="stat-card stat-accent" ontouchend="filterByStats('pipeline')" onclick="filterByStats('pipeline')" id="card-pipeline" style="cursor:pointer;text-align:left;width:100%;border:1px solid var(--border);background:var(--surface);">
         <div class="stat-value" id="stat-pipeline">—</div>
         <div class="stat-label">En pipeline</div>
-      </div>
-      <div class="stat-card" onclick="filterByStats('recordatorios')" id="card-reminders" style="cursor:pointer;">
+      </button>
+      <button class="stat-card" ontouchend="filterByStats('recordatorios')" onclick="filterByStats('recordatorios')" id="card-reminders" style="cursor:pointer;text-align:left;width:100%;border:1px solid var(--border);background:var(--surface);">
         <div class="stat-value" id="stat-reminders">—</div>
         <div class="stat-label">Recordatorios</div>
-      </div>
+      </button>
     </div>
 
     <div class="search-bar">
