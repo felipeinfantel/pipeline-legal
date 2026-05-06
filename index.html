@@ -978,15 +978,61 @@ async function loadInteractions(contactId) {
 
   const icons = { WhatsApp:'💬', Email:'✉️', Reunión:'🤝', Café:'☕', Llamada:'📞', LinkedIn:'💼' };
   el.innerHTML = data.map(i => `
-    <div class="interaction-item">
+    <div class="interaction-item" id="int-${i.id}">
       <div class="interaction-icon">${icons[i.tipo] || '💬'}</div>
-      <div class="interaction-content">
-        <div class="interaction-type">${i.tipo}</div>
-        <div class="interaction-date">${new Date(i.fecha).toLocaleDateString('es-CL')}</div>
-        ${i.nota ? `<div class="interaction-note">${i.nota}</div>` : ''}
+      <div class="interaction-content" style="flex:1;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="interaction-type">${i.tipo}</div>
+            <div class="interaction-date">${new Date(i.fecha).toLocaleDateString('es-CL')}</div>
+            ${i.nota ? `<div class="interaction-note">${i.nota}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:4px;margin-left:8px;flex-shrink:0;">
+            <button class="btn btn-icon" style="width:26px;height:26px;font-size:11px;" onclick="editInteraction('${i.id}','${contactId}')">✏️</button>
+            <button class="btn btn-icon" style="width:26px;height:26px;font-size:11px;" onclick="deleteInteraction('${i.id}','${contactId}')">🗑</button>
+          </div>
+        </div>
       </div>
     </div>
   `).join('');
+}
+
+async function deleteInteraction(intId, contactId) {
+  if (!confirm('¿Eliminar esta interacción?')) return;
+  await db.from('interactions').delete().eq('id', intId);
+  loadInteractions(contactId);
+  showToast('Interacción eliminada');
+}
+
+async function editInteraction(intId, contactId) {
+  const { data } = await db.from('interactions').select('*').eq('id', intId).single();
+  if (!data) return;
+
+  const tipos = ['WhatsApp','Email','Reunión','Café','Llamada','LinkedIn'];
+  const opts = tipos.map(t => `<option value="${t}" ${t===data.tipo?'selected':''}>${t}</option>`).join('');
+
+  const el = document.getElementById(`int-${intId}`);
+  el.innerHTML = `
+    <div style="width:100%;padding:8px 0;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <select id="edit-tipo-${intId}">${opts}</select>
+        <input type="date" id="edit-fecha-${intId}" value="${data.fecha}">
+      </div>
+      <input type="text" id="edit-nota-${intId}" value="${data.nota||''}" placeholder="Notas..." style="margin-bottom:8px;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="saveEditInteraction('${intId}','${contactId}')">Guardar</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadInteractions('${contactId}')">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+async function saveEditInteraction(intId, contactId) {
+  const tipo = document.getElementById(`edit-tipo-${intId}`).value;
+  const fecha = document.getElementById(`edit-fecha-${intId}`).value;
+  const nota = document.getElementById(`edit-nota-${intId}`).value;
+  await db.from('interactions').update({ tipo, fecha, nota }).eq('id', intId);
+  loadInteractions(contactId);
+  showToast('Interacción actualizada ✓');
 }
 
 async function addInteraction(contactId) {
