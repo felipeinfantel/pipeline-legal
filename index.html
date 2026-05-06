@@ -550,7 +550,7 @@ label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px
 
 <script>
 const SUPABASE_URL = 'https://dufryglkcnbvcfbefscz.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_PjNrpwbojk731O4NYTgz-A_VfBvmNxn';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1ZnJ5Z2xrY25idmNmYmVmc2N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MjQ5NjksImV4cCI6MjA5MTQwMDk2OX0.TX8Q9seZURwoeGQf4QjdJ_bMqHghzdjt87k9IyQ2KW4';
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1171,7 +1171,7 @@ Responde ÚNICAMENTE con JSON válido sin texto adicional:
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 2000,
@@ -1261,7 +1261,7 @@ Responde ÚNICAMENTE con JSON válido:
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 2000,
