@@ -1072,9 +1072,11 @@ async function loadReminders(contactId) {
   }
 
   const now = new Date();
+  const c = contacts.find(x => x.id === contactId);
   el.innerHTML = data.map(r => {
     const dt = new Date(r.fecha_hora);
     const overdue = dt < now;
+    const nombre = (c?.nombre||'').replace(/'/g,"\\'");
     return `
     <div class="reminder-item ${overdue ? 'reminder-overdue' : ''}">
       <div class="reminder-left">
@@ -1084,7 +1086,10 @@ async function loadReminders(contactId) {
           <div class="reminder-date">${dt.toLocaleDateString('es-CL')} ${dt.toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})}</div>
         </div>
       </div>
-      <button class="btn btn-icon" style="width:28px;height:28px;font-size:12px;" onclick="deleteReminder('${r.id}','${contactId}')">✕</button>
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px;" onclick="downloadICS('${r.descripcion.replace(/'/g,"\\'")}','${r.fecha_hora}','${nombre}')">+ Cal</button>
+        <button class="btn btn-icon" style="width:28px;height:28px;font-size:12px;" onclick="deleteReminder('${r.id}','${contactId}')">✕</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1172,6 +1177,38 @@ async function deleteReminder(remId, contactId) {
   await db.from('reminders').delete().eq('id', remId);
   loadReminders(contactId);
   showToast('Recordatorio eliminado');
+}
+
+function downloadICS(desc, fecha_hora, contactNombre) {
+  const start = new Date(fecha_hora);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  function fmt(d) { return d.toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z'; }
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Pipeline Legal//ES',
+    'BEGIN:VEVENT',
+    'UID:' + Date.now() + '@pipeline-legal',
+    'DTSTAMP:' + fmt(new Date()),
+    'DTSTART:' + fmt(start),
+    'DTEND:' + fmt(end),
+    'SUMMARY:' + desc,
+    'DESCRIPTION:Recordatorio para ' + contactNombre + ' - Pipeline Legal',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT15M',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Recordatorio',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = desc.replace(/[^a-z0-9]/gi,'_') + '.ics';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // NOTAS
