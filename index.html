@@ -1091,13 +1091,37 @@ async function loadReminders(contactId) {
 
 const EDGE_FUNCTION_URL = 'https://dufryglkcnbvcfbefscz.supabase.co/functions/v1/google-calendar';
 const GOOGLE_CLIENT_ID = '466792889027-kr3241ik1d8piqhbfdp052b0qnt978sm.apps.googleusercontent.com';
-let googleAccessToken = null;
-try { googleAccessToken = localStorage.getItem('google_access_token'); } catch(e) {}
+let gcalConnected = false;
+
+async function checkGCalStatus() {
+  try {
+    const res = await fetch(EDGE_FUNCTION_URL + '?action=status', {
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    const data = await res.json();
+    gcalConnected = data.connected;
+    updateGCalButton();
+  } catch(e) { gcalConnected = false; }
+}
+
+function updateGCalButton() {
+  const btn = document.getElementById('gcal-btn');
+  if (!btn) return;
+  if (gcalConnected) {
+    btn.textContent = 'Cal ✓';
+    btn.style.background = 'var(--accent-light)';
+    btn.style.color = 'var(--accent)';
+  } else {
+    btn.textContent = 'Cal';
+    btn.style.background = '';
+    btn.style.color = '';
+  }
+}
 
 async function connectGoogleCalendar() {
   const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
     'client_id=' + GOOGLE_CLIENT_ID +
-    '&redirect_uri=' + encodeURIComponent(window.location.origin + '/auth/google/callback') +
+    '&redirect_uri=' + encodeURIComponent(EDGE_FUNCTION_URL) +
     '&response_type=code' +
     '&scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar.events') +
     '&access_type=offline&prompt=consent';
@@ -1105,13 +1129,12 @@ async function connectGoogleCalendar() {
 }
 
 async function createCalendarEvent(desc, fecha_hora, contactNombre) {
-  if (!googleAccessToken) return false;
+  if (!gcalConnected) return false;
   try {
     const res = await fetch(EDGE_FUNCTION_URL + '?action=create-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
       body: JSON.stringify({
-        access_token: googleAccessToken,
         summary: desc,
         description: 'Recordatorio para ' + contactNombre + ' — Pipeline Legal',
         start_time: fecha_hora
@@ -1133,9 +1156,9 @@ async function addReminder(contactId) {
   if (error) { showToast('Error al guardar'); return; }
 
   const c = contacts.find(x => x.id === contactId);
-  if (googleAccessToken && c) {
+  if (gcalConnected && c) {
     const ok = await createCalendarEvent(desc, fecha_hora, c.nombre);
-    showToast(ok ? 'Recordatorio y evento en Google Calendar ✓' : 'Recordatorio guardado (Calendar falló)');
+    showToast(ok ? 'Recordatorio y evento en Google Calendar ✓' : 'Recordatorio guardado ✓');
   } else {
     showToast('Recordatorio agregado ✓');
   }
@@ -1412,22 +1435,23 @@ function renderEventos(list) {
 // Handle Google OAuth callback
 (function() {
   const params = new URLSearchParams(window.location.search);
-  const token = params.get('access_token');
-  if (token) {
-    try { localStorage.setItem('google_access_token', token); } catch(e) {}
-    googleAccessToken = token;
+  if (params.get('gcal') === 'connected') {
     history.replaceState({}, '', window.location.pathname);
-    setTimeout(() => showToast('Google Calendar conectado ✓'), 1000);
-  }
-  // Update calendar button state
-  if (googleAccessToken) {
-    const btn = document.getElementById('gcal-btn');
-    if (btn) btn.style.background = 'var(--accent-light)';
+    gcalConnected = true;
+    setTimeout(() => { updateGCalButton(); showToast('Google Calendar conectado ✓'); }, 500);
   }
 })();
 
 // START
+// Initialize header buttons on load
+(function() {
+  const actions = document.getElementById('header-actions');
+  const calBtn = '<button class="btn btn-secondary btn-sm" id="gcal-btn" onclick="connectGoogleCalendar()">Cal</button>';
+  actions.innerHTML = calBtn + '<button class="btn btn-icon" onclick="requestNotificationPermission()" style="font-size:16px;">🔔</button><button class="btn btn-primary btn-sm" onclick="openNewContact()">+ Contacto</button>';
+})();
+
 init();
+checkGCalStatus();
 setTimeout(requestNotificationPermission, 2000);
 </script>
 </body>
