@@ -1180,18 +1180,30 @@ async function deleteReminder(remId, contactId) {
 }
 
 function downloadICS(desc, fecha_hora, contactNombre) {
-  const start = new Date(fecha_hora);
-  const end = new Date(start.getTime() + 30 * 60 * 1000);
-  function fmt(d) { return d.toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z'; }
+  // Parse date without timezone conversion
+  const parts = fecha_hora.split('T');
+  const dateParts = parts[0].split('-');
+  const timeParts = (parts[1] || '09:00:00').split(':');
+  const year = dateParts[0], month = dateParts[1], day = dateParts[2];
+  const hour = timeParts[0], min = timeParts[1] || '00';
+  // Calculate end time (30 min later)
+  const endHour = String(parseInt(hour) + 0).padStart(2,'0');
+  const endMin = String(parseInt(min) + 30).padStart(2,'0');
+  const endHourFinal = parseInt(endMin) >= 60 ? String(parseInt(endHour)+1).padStart(2,'0') : endHour;
+  const endMinFinal = parseInt(endMin) >= 60 ? String(parseInt(endMin)-60).padStart(2,'0') : endMin;
+  
+  function fmtLocal(y,mo,d,h,mi) { return y+mo+d+'T'+h+mi+'00'; }
+  function fmtNow() { return new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z'; }
+  
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Pipeline Legal//ES',
     'BEGIN:VEVENT',
     'UID:' + Date.now() + '@pipeline-legal',
-    'DTSTAMP:' + fmt(new Date()),
-    'DTSTART:' + fmt(start),
-    'DTEND:' + fmt(end),
+    'DTSTAMP:' + fmtNow(),
+    'DTSTART;TZID=America/Santiago:' + fmtLocal(year,month,day,hour,min),
+    'DTEND;TZID=America/Santiago:' + fmtLocal(year,month,day,endHourFinal,endMinFinal),
     'SUMMARY:' + desc,
     'DESCRIPTION:Recordatorio para ' + contactNombre + ' - Pipeline Legal',
     'BEGIN:VALARM',
