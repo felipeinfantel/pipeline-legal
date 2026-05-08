@@ -333,6 +333,7 @@ label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px
     <span>⚖️</span> Pipeline Legal
   </div>
   <div class="header-actions" id="header-actions">
+    <button class="btn btn-icon" id="gcal-btn" onclick="connectGoogleCalendar()" title="Conectar Google Calendar" style="font-size:16px;">📅</button>
     <button class="btn btn-icon" onclick="requestNotificationPermission()" title="Activar notificaciones" style="font-size:16px;">🔔</button>
     <button class="btn btn-primary btn-sm" onclick="openNewContact()">+ Contacto</button>
   </div>
@@ -1083,6 +1084,38 @@ async function loadReminders(contactId) {
   }).join('');
 }
 
+const EDGE_FUNCTION_URL = 'https://dufryglkcnbvcfbefscz.supabase.co/functions/v1/google-calendar';
+const GOOGLE_CLIENT_ID = '466792889027-kr3241ik1d8piqhbfdp052b0qnt978sm.apps.googleusercontent.com';
+let googleAccessToken = null;
+try { googleAccessToken = localStorage.getItem('google_access_token'); } catch(e) {}
+
+async function connectGoogleCalendar() {
+  const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+    'client_id=' + GOOGLE_CLIENT_ID +
+    '&redirect_uri=' + encodeURIComponent(window.location.origin + '/auth/google/callback') +
+    '&response_type=code' +
+    '&scope=' + encodeURIComponent('https://www.googleapis.com/auth/calendar.events') +
+    '&access_type=offline&prompt=consent';
+  window.location.href = authUrl;
+}
+
+async function createCalendarEvent(desc, fecha_hora, contactNombre) {
+  if (!googleAccessToken) return false;
+  try {
+    const res = await fetch(EDGE_FUNCTION_URL + '?action=create-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+      body: JSON.stringify({
+        access_token: googleAccessToken,
+        summary: desc,
+        description: 'Recordatorio para ' + contactNombre + ' — Pipeline Legal',
+        start_time: fecha_hora
+      })
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
 async function addReminder(contactId) {
   const fecha = document.getElementById('rem-fecha').value;
   const hora = document.getElementById('rem-hora').value;
@@ -1090,14 +1123,21 @@ async function addReminder(contactId) {
 
   if (!fecha || !desc) { showToast('Completa fecha y descripción'); return; }
 
-  const fecha_hora = `${fecha}T${hora}:00`;
+  const fecha_hora = fecha + 'T' + hora + ':00';
   const { error } = await db.from('reminders').insert({ contact_id: contactId, descripcion: desc, fecha_hora });
   if (error) { showToast('Error al guardar'); return; }
+
+  const c = contacts.find(x => x.id === contactId);
+  if (googleAccessToken && c) {
+    const ok = await createCalendarEvent(desc, fecha_hora, c.nombre);
+    showToast(ok ? 'Recordatorio y evento en Google Calendar ✓' : 'Recordatorio guardado (Calendar falló)');
+  } else {
+    showToast('Recordatorio agregado ✓');
+  }
 
   document.getElementById('rem-fecha').value = '';
   document.getElementById('rem-desc').value = '';
   loadReminders(contactId);
-  showToast('Recordatorio agregado ✓');
 }
 
 async function deleteReminder(remId, contactId) {
@@ -1363,6 +1403,23 @@ function renderEventos(list) {
     <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">${list.length} eventos encontrados</div>
     ${html}`;
 }
+
+// Handle Google OAuth callback
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('access_token');
+  if (token) {
+    try { localStorage.setItem('google_access_token', token); } catch(e) {}
+    googleAccessToken = token;
+    history.replaceState({}, '', window.location.pathname);
+    setTimeout(() => showToast('Google Calendar conectado ✓'), 1000);
+  }
+  // Update calendar button state
+  if (googleAccessToken) {
+    const btn = document.getElementById('gcal-btn');
+    if (btn) btn.style.background = 'var(--accent-light)';
+  }
+})();
 
 // START
 init();
