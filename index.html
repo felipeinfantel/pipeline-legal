@@ -87,7 +87,7 @@ h3 { font-size: 16px; font-weight: 500; }
   height: var(--nav-h);
   background: var(--surface);
   border-top: 1px solid var(--border);
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -471,6 +471,41 @@ label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px
 
 </main>
 
+  <!-- PAGE: ESTADÍSTICAS -->
+  <div class="page" id="page-stats">
+    <div class="section-header">
+      <div class="section-title serif">Estadísticas</div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="form-group">
+        <label>Período</label>
+        <select id="stats-periodo" onchange="onPeriodoChange()">
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="trimestre">Este trimestre</option>
+          <option value="año">Este año</option>
+          <option value="custom">Rango personalizado</option>
+        </select>
+      </div>
+      <div id="stats-custom-range" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div>
+            <label>Desde</label>
+            <input type="date" id="stats-desde">
+          </div>
+          <div>
+            <label>Hasta</label>
+            <input type="date" id="stats-hasta">
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="generarEstadisticas()" id="btn-stats">Generar informe</button>
+    </div>
+
+    <div id="stats-results"></div>
+  </div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <button class="nav-item active" onclick="showPage('pipeline', this)">
@@ -484,6 +519,10 @@ label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px
   <button class="nav-item" onclick="showPage('eventos', this)">
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
     Eventos
+  </button>
+  <button class="nav-item" onclick="showPage('stats', this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    Stats
   </button>
 </nav>
 
@@ -1492,6 +1531,258 @@ function renderEventos(list) {
 })();
 
 // START
+
+// ─── ESTADÍSTICAS ────────────────────────────────────────────────
+
+function onPeriodoChange() {
+  const val = document.getElementById('stats-periodo').value;
+  document.getElementById('stats-custom-range').style.display = val === 'custom' ? 'block' : 'none';
+}
+
+function getPeriodoRanges(periodo) {
+  const now = new Date();
+  let desde, hasta, prevDesde, prevHasta;
+  hasta = new Date(now); hasta.setHours(23,59,59,999);
+
+  if (periodo === 'semana') {
+    const day = now.getDay() || 7;
+    desde = new Date(now); desde.setDate(now.getDate() - day + 1); desde.setHours(0,0,0,0);
+    prevHasta = new Date(desde); prevHasta.setDate(prevHasta.getDate() - 1); prevHasta.setHours(23,59,59,999);
+    prevDesde = new Date(prevHasta); prevDesde.setDate(prevHasta.getDate() - 6); prevDesde.setHours(0,0,0,0);
+  } else if (periodo === 'mes') {
+    desde = new Date(now.getFullYear(), now.getMonth(), 1);
+    hasta = new Date(now); hasta.setHours(23,59,59,999);
+    prevDesde = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    prevHasta = new Date(now.getFullYear(), now.getMonth(), 0); prevHasta.setHours(23,59,59,999);
+  } else if (periodo === 'trimestre') {
+    const q = Math.floor(now.getMonth() / 3);
+    desde = new Date(now.getFullYear(), q * 3, 1);
+    hasta = new Date(now); hasta.setHours(23,59,59,999);
+    prevDesde = new Date(now.getFullYear(), (q-1)*3, 1);
+    prevHasta = new Date(now.getFullYear(), q*3, 0); prevHasta.setHours(23,59,59,999);
+  } else if (periodo === 'año') {
+    desde = new Date(now.getFullYear(), 0, 1);
+    hasta = new Date(now); hasta.setHours(23,59,59,999);
+    prevDesde = new Date(now.getFullYear()-1, 0, 1);
+    prevHasta = new Date(now.getFullYear()-1, 11, 31); prevHasta.setHours(23,59,59,999);
+  } else {
+    desde = new Date(document.getElementById('stats-desde').value);
+    hasta = new Date(document.getElementById('stats-hasta').value); hasta.setHours(23,59,59,999);
+    const diff = hasta - desde;
+    prevHasta = new Date(desde); prevHasta.setDate(prevHasta.getDate()-1); prevHasta.setHours(23,59,59,999);
+    prevDesde = new Date(prevHasta.getTime() - diff);
+  }
+  return { desde, hasta, prevDesde, prevHasta };
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString('es-CL', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+
+async function generarEstadisticas() {
+  const periodo = document.getElementById('stats-periodo').value;
+  if (periodo === 'custom') {
+    if (!document.getElementById('stats-desde').value || !document.getElementById('stats-hasta').value) {
+      showToast('Selecciona las fechas'); return;
+    }
+  }
+
+  const btn = document.getElementById('btn-stats');
+  btn.disabled = true; btn.textContent = 'Calculando...';
+  document.getElementById('stats-results').innerHTML = '<div class="loading"><div class="spinner"></div>Cargando datos...</div>';
+
+  try {
+    const { desde, hasta, prevDesde, prevHasta } = getPeriodoRanges(periodo);
+
+    // Fetch all data in parallel
+    const [intRes, intPrevRes, contRes, remRes] = await Promise.all([
+      db.from('interactions').select('tipo, fecha, contact_id, nota').gte('fecha', desde.toISOString().split('T')[0]).lte('fecha', hasta.toISOString().split('T')[0]),
+      db.from('interactions').select('tipo, fecha').gte('fecha', prevDesde.toISOString().split('T')[0]).lte('fecha', prevHasta.toISOString().split('T')[0]),
+      db.from('contacts').select('id, nombre, empresa, estado, created_at').gte('created_at', desde.toISOString()).lte('created_at', hasta.toISOString()),
+      db.from('reminders').select('descripcion, fecha_hora, completado').gte('fecha_hora', desde.toISOString()).lte('fecha_hora', hasta.toISOString()),
+    ]);
+
+    const ints = intRes.data || [];
+    const intsPrev = intPrevRes.data || [];
+    const newContacts = contRes.data || [];
+    const reminders = remRes.data || [];
+
+    // Calculate stats
+    const tipoCount = {};
+    ints.forEach(i => { tipoCount[i.tipo] = (tipoCount[i.tipo] || 0) + 1; });
+    const tipoPrevCount = {};
+    intsPrev.forEach(i => { tipoPrevCount[i.tipo] = (tipoPrevCount[i.tipo] || 0) + 1; });
+
+    // Pipeline breakdown
+    const pipelineCount = {};
+    contacts.forEach(c => { pipelineCount[c.estado] = (pipelineCount[c.estado] || 0) + 1; });
+
+    // Render results
+    renderStatsResults({
+      periodo, desde, hasta, prevDesde, prevHasta,
+      ints, intsPrev, tipoCount, tipoPrevCount,
+      newContacts, reminders, pipelineCount
+    });
+
+  } catch(e) {
+    document.getElementById('stats-results').innerHTML = '<div class="error">Error al cargar datos: ' + e.message + '</div>';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generar informe';
+  }
+}
+
+function renderStatsResults(d) {
+  const { periodo, desde, hasta, prevDesde, prevHasta, ints, intsPrev, tipoCount, tipoPrevCount, newContacts, reminders, pipelineCount } = d;
+  const periodoLabel = { semana:'Esta semana', mes:'Este mes', trimestre:'Este trimestre', año:'Este año', custom:'Período personalizado' }[periodo];
+
+  const tipoIcons = { WhatsApp:'💬', Email:'✉️', Reunión:'🤝', Café:'☕', Llamada:'📞', LinkedIn:'💼' };
+  const allTipos = [...new Set([...Object.keys(tipoCount), ...Object.keys(tipoPrevCount)])];
+
+  const tipoRows = allTipos.sort((a,b) => (tipoCount[b]||0) - (tipoCount[a]||0)).map(tipo => {
+    const curr = tipoCount[tipo] || 0;
+    const prev = tipoPrevCount[tipo] || 0;
+    const diff = curr - prev;
+    const color = diff > 0 ? 'var(--accent)' : diff < 0 ? 'var(--danger)' : 'var(--text3)';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:20px;">${tipoIcons[tipo]||'📋'}</span>
+        <span style="font-size:14px;font-weight:500;">${tipo}</span>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:20px;font-weight:600;">${curr}</div>
+        <div style="font-size:11px;color:${color};">${diff===0?'igual':(diff>0?'+':'')+diff+' vs ant.'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const pipelineRows = Object.entries(pipelineCount).map(([estado, n]) => `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px;">${estado}</span>
+      <span style="font-size:14px;font-weight:600;">${n}</span>
+    </div>`).join('');
+
+  const newContactsRows = newContacts.length ? newContacts.map(c => `
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:500;">${c.nombre}</div>
+      <div style="font-size:12px;color:var(--text3);">${c.empresa}</div>
+    </div>`).join('') : '<div style="font-size:13px;color:var(--text3);padding:8px 0;">Sin contactos nuevos en este período</div>';
+
+  const totalCurr = ints.length;
+  const totalPrev = intsPrev.length;
+  const diffTotal = totalCurr - totalPrev;
+  const diffColor = diffTotal > 0 ? 'var(--accent)' : diffTotal < 0 ? 'var(--danger)' : 'var(--text3)';
+
+  document.getElementById('stats-results').innerHTML = `
+    <div style="font-size:12px;color:var(--text2);margin-bottom:16px;display:flex;justify-content:space-between;">
+      <span>${fmtDate(desde)} — ${fmtDate(hasta)}</span>
+      <span style="color:var(--text3);">vs ${fmtDate(prevDesde)} — ${fmtDate(prevHasta)}</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:32px;font-weight:700;color:var(--accent);">${totalCurr}</div>
+        <div style="font-size:12px;color:var(--text2);">Interacciones</div>
+        <div style="font-size:11px;color:${diffColor};margin-top:4px;">${diffTotal===0?'igual':(diffTotal>0?'+':'')+diffTotal+' vs ant.'}</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:32px;font-weight:700;color:var(--accent2);">${newContacts.length}</div>
+        <div style="font-size:12px;color:var(--text2);">Contactos nuevos</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;">${contacts.length} total</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Por tipo de interacción</div>
+      ${tipoRows || '<div style="font-size:13px;color:var(--text3);">Sin interacciones en este período</div>'}
+    </div>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Estado del pipeline</div>
+      ${pipelineRows}
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Contactos nuevos (${newContacts.length})</div>
+      ${newContactsRows}
+    </div>
+
+    <button class="btn btn-secondary btn-full" onclick="descargarPDF()" style="margin-bottom:24px;">⬇ Descargar PDF</button>
+  `;
+
+  // Store data for PDF
+  window._statsData = d;
+}
+
+function descargarPDF() {
+  const d = window._statsData;
+  if (!d) return;
+
+  const { desde, hasta, prevDesde, prevHasta, ints, intsPrev, tipoCount, tipoPrevCount, newContacts, pipelineCount } = d;
+  const periodoLabel = document.getElementById('stats-periodo').options[document.getElementById('stats-periodo').selectedIndex].text;
+
+  const tipoIcons = { WhatsApp:'💬', Email:'✉️', Reunión:'🤝', Café:'☕', Llamada:'📞', LinkedIn:'💼' };
+  const allTipos = [...new Set([...Object.keys(tipoCount), ...Object.keys(tipoPrevCount)])].sort((a,b)=>(tipoCount[b]||0)-(tipoCount[a]||0));
+
+  const tipoRowsHTML = allTipos.map(tipo => {
+    const curr = tipoCount[tipo]||0, prev = tipoPrevCount[tipo]||0, diff = curr-prev;
+    return `<tr><td>${tipoIcons[tipo]||''} ${tipo}</td><td style="text-align:center;font-weight:600;">${curr}</td><td style="text-align:center;color:${diff>0?'#2D5016':diff<0?'#B91C1C':'#6B6560'};">${diff===0?'—':(diff>0?'+':'')+diff}</td></tr>`;
+  }).join('');
+
+  const pipelineHTML = Object.entries(pipelineCount).map(([e,n])=>`<tr><td>${e}</td><td style="text-align:center;font-weight:600;">${n}</td></tr>`).join('');
+  const newContactsHTML = newContacts.length ? newContacts.map(c=>`<tr><td><strong>${c.nombre}</strong></td><td>${c.empresa}</td></tr>`).join('') : '<tr><td colspan="2" style="color:#9E9890;">Sin contactos nuevos</td></tr>';
+
+  const totalCurr = ints.length, totalPrev = intsPrev.length, diffTotal = totalCurr - totalPrev;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; color: #1A1814; padding: 40px; max-width: 700px; margin: 0 auto; }
+  h1 { color: #2D5016; font-size: 24px; margin-bottom: 4px; }
+  h2 { color: #1A1814; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #2D5016; padding-bottom: 6px; margin-top: 28px; margin-bottom: 12px; }
+  .subtitle { color: #6B6560; font-size: 13px; margin-bottom: 32px; }
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .kpi { background: #F5F3EE; border-radius: 12px; padding: 16px; text-align: center; }
+  .kpi-value { font-size: 36px; font-weight: 700; color: #2D5016; }
+  .kpi-label { font-size: 12px; color: #6B6560; margin-top: 4px; }
+  .kpi-delta { font-size: 11px; margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th { background: #F5F3EE; padding: 8px 12px; text-align: left; font-size: 12px; color: #6B6560; }
+  td { padding: 8px 12px; border-bottom: 1px solid #EEEBE4; font-size: 13px; }
+  .footer { margin-top: 40px; color: #9E9890; font-size: 11px; text-align: center; }
+</style></head><body>
+<h1>⚖️ Pipeline Legal — Informe de actividad</h1>
+<div class="subtitle">${periodoLabel}: ${fmtDate(desde)} al ${fmtDate(hasta)} &nbsp;|&nbsp; Comparado con: ${fmtDate(prevDesde)} al ${fmtDate(prevHasta)}</div>
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-value">${totalCurr}</div>
+    <div class="kpi-label">Interacciones totales</div>
+    <div class="kpi-delta" style="color:${diffTotal>0?'#2D5016':diffTotal<0?'#B91C1C':'#6B6560'};">${diffTotal===0?'Igual al período anterior':(diffTotal>0?'+':'')+diffTotal+' vs período anterior'}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-value" style="color:#8B4513;">${newContacts.length}</div>
+    <div class="kpi-label">Contactos nuevos</div>
+    <div class="kpi-delta" style="color:#6B6560;">${contacts.length} contactos en total</div>
+  </div>
+</div>
+
+<h2>Interacciones por tipo</h2>
+<table><tr><th>Tipo</th><th style="text-align:center;">Período actual</th><th style="text-align:center;">vs Anterior</th></tr>${tipoRowsHTML||'<tr><td colspan="3" style="color:#9E9890;">Sin interacciones</td></tr>'}</table>
+
+<h2>Estado del pipeline</h2>
+<table><tr><th>Estado</th><th style="text-align:center;">Contactos</th></tr>${pipelineHTML}</table>
+
+<h2>Contactos nuevos registrados</h2>
+<table><tr><th>Nombre</th><th>Empresa</th></tr>${newContactsHTML}</table>
+
+<div class="footer">Generado el ${new Date().toLocaleDateString('es-CL')} &nbsp;|&nbsp; Pipeline Legal</div>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
 // Initialize header buttons on load
 (function() {
   const actions = document.getElementById('header-actions');
