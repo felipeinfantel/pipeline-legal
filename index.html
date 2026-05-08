@@ -582,10 +582,15 @@ function showPage(name, btn) {
   btn.classList.add('active');
 
   const actions = document.getElementById('header-actions');
+  const calBtn = '<button class="btn btn-secondary btn-sm" id="gcal-btn" onclick="connectGoogleCalendar()">Cal</button>';
   if (name === 'pipeline') {
-    actions.innerHTML = '<button class="btn btn-primary btn-sm" onclick="openNewContact()">+ Contacto</button>';
+    actions.innerHTML = calBtn + '<button class="btn btn-icon" onclick="requestNotificationPermission()" style="font-size:16px;">🔔</button><button class="btn btn-primary btn-sm" onclick="openNewContact()">+ Contacto</button>';
   } else {
-    actions.innerHTML = '';
+    actions.innerHTML = calBtn;
+  }
+  if (googleAccessToken) {
+    const b = document.getElementById('gcal-btn');
+    if (b) { b.textContent = 'Cal ✓'; b.style.background = 'var(--accent-light)'; }
   }
 }
 
